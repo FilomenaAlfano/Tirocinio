@@ -6,12 +6,12 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f7fa;
+      background: #E0F2F9;
       padding: 20px;
     }
     h1 {
       text-align: center;
-      color: #333;
+      color: #003366;
     }
     table {
       margin: 20px auto;
@@ -26,8 +26,8 @@
       text-align: left;
     }
     th {
-      background: #007bff;
-      color: white;
+      background: #819edb;
+      color: #003366;
     }
     tr:hover {
       background: #f1f1f1;
@@ -53,15 +53,21 @@
       const data = await response.text();
 
       const rows = data.trim().split("\n");
-      const headers = rows[0].split(";").map(h => h.trim());
+      let headers = rows[0].split(";");
+      headers = headers.map(h => h.trim());
 
-      const records = rows.slice(1).map(row => {
-        const values = row.split(";");
-        let obj = {};
-        headers.forEach((h, i) => {
-          obj[h] = values[i] ? values[i].trim() : "";
+      const dataRows = rows.slice(1); // prendo tutte le righe tranne la prima (che contiene gli header)
+
+      // trasformo ogni riga in un oggetto
+      const records = dataRows.map(row => {
+        const values = row.split(";"); // divido la riga nei singoli campi
+        const record = {};
+        // scorro tutte le colonne 
+        headers.forEach((header, i) => {
+          const entry = values[i] ? values[i].trim() : ""; // se il valore di quella colonna esiste, tolgo eventuali spazi vuoti, altrimenti metto la stringa nulla
+          record[header] = entry; // nome colonna = valore della entry
         });
-        return obj;
+        return record;
       });
 
       return records;
@@ -70,35 +76,44 @@
     async function showTop10() {
       let records = await loadCSV();
 
-      // Somma i ricavi per sito
+      // sommo i ricavi per sito
       let earningsBySite = {};
+      // scorro ogni record
       records.forEach(r => {
-        let site = r["siteid"];
+        let site = r["siteid"]; // prendo il nome del sito
+        // sostituisco la virgola col punto e rimuovo eventuali caratteri non utili; se il valore non è valido metto 0
         let earnings = parseFloat(r["earnings"].replace(",", ".").replace(/[^0-9.]/g, "")) || 0;
-        if (!earningsBySite[site]) earningsBySite[site] = 0;
-        earningsBySite[site] += earnings;
+        if (!earningsBySite[site]) earningsBySite[site] = 0; // se è la prima volta che incontro un sito, inizializzo il suo totale a 0
+        earningsBySite[site] += earnings; // aggiorno la somma ogni volta che incontriamo il sito
       });
 
-      // Converti in array
+      // converto in array
       let arr = Object.entries(earningsBySite).map(([site, total]) => ({
         site: site,
         earnings: total
       }));
 
-      // Ordina per ricavi
-      arr.sort((a, b) => b.earnings - a.earnings);
+      // ordino per ricavi
+      arr.sort((a, b) => {
+        // Se a ha più ricavi di b, metti prima a
+        if (a.earnings > b.earnings) return -1;
+        // Se b ha più ricavi di a, metti prima b
+        if (a.earnings < b.earnings) return 1;
+        // Se hanno lo stesso ricavo, mantieni l’ordine originale
+        return 0;
+      });
 
-      // Prendi top 10
+      // prendo la top 10
       let top10 = arr.slice(0, 10);
 
-      // Mostra nella tabella
+      // mostro nella tabella
       const tbody = document.querySelector("#top10 tbody");
       top10.forEach((r, i) => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${i + 1}</td>
           <td>${r.site}</td>
-          <td>${r.earnings.toLocaleString("it-IT", {minimumFractionDigits: 2, maximumFractionDigits: 2})} €</td>
+          <td>${r.earnings.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
         `;
         tbody.appendChild(row);
       });
