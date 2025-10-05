@@ -6,35 +6,28 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f7fa;
+      background: #E0F2F9;
       padding: 20px;
     }
-    h1, h2 {
+    h1 {
       text-align: center;
-      color: #333;
-    }
-    .tables {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 30px;
-      flex-wrap: wrap;
+      color: #003366;
     }
     table {
-      margin: 10px;
+      margin: 20px auto;
       border-collapse: collapse;
-      width: 45%;
-      min-width: 300px;
+      width: 70%;
       background: #fff;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     th, td {
-      padding: 10px 12px;
+      padding: 12px 15px;
       border-bottom: 1px solid #ddd;
       text-align: left;
     }
     th {
-      background: #007bff;
-      color: white;
+      background: #819edb;
+      color: #003366;
     }
     tr:hover {
       background: #f1f1f1;
@@ -78,15 +71,21 @@
       const data = await response.text();
 
       const rows = data.trim().split("\n");
-      const headers = rows[0].split(";").map(h => h.trim());
+      let headers = rows[0].split(";");
+      headers = headers.map(h => h.trim());
 
-      const records = rows.slice(1).map(row => {
-        const values = row.split(";");
-        let obj = {};
-        headers.forEach((h, i) => {
-          obj[h] = values[i] ? values[i].trim() : "";
+      const dataRows = rows.slice(1); // prendo tutte le righe tranne la prima (che contiene gli header)
+
+      // trasformo ogni riga in un oggetto
+      const records = dataRows.map(row => {
+        const values = row.split(";"); // divido la riga nei singoli campi
+        const record = {};
+        // scorro tutte le colonne 
+        headers.forEach((header, i) => {
+          const entry = values[i] ? values[i].trim() : ""; // se il valore di quella colonna esiste, tolgo eventuali spazi vuoti, altrimenti metto la stringa nulla
+          record[header] = entry; // nome colonna = valore della entry
         });
-        return obj;
+        return record;
       });
 
       return records;
@@ -95,36 +94,41 @@
     async function showTop10ByInventory() {
       let records = await loadCSV();
 
-      // Somma i ricavi per sito + tipo inventory
+      // sommo i ricavi per sito + tipo inventory
       let earningsBySiteInventory = {};
+	  // scorro tutti i record
       records.forEach(r => {
-        let site = r["siteid"];
-        let inv = r["inventory"].toLowerCase();
-        let earnings = parseFloat(r["earnings"].replace(",", ".").replace(/[^0-9.]/g, "")) || 0;
-        let key = site + "||" + inv;
-        if (!earningsBySiteInventory[key]) earningsBySiteInventory[key] = 0;
-        earningsBySiteInventory[key] += earnings;
+        let site = r["siteid"]; // estraggo il nome del sito
+        let inv = r["inventory"].toLowerCase(); // estraggo il valore dell'inventory e lo converto tutto in minuscolo per semplicità
+        // prendo i ricavi, sostituendo la virgola con il punto e rimuovendo eventuali caratteri non utili
+        // se il valore non è valido, metto 0
+		let earnings = parseFloat(r["earnings"].replace(",", ".").replace(/[^0-9.]/g, "")) || 0;
+        let key = site + "||" + inv; // pongo come chiave la combo nome sito + valore inventory
+        if (!earningsBySiteInventory[key]) earningsBySiteInventory[key] = 0; // se è la prima volta che incontro questa combinazione, inizializzo a 0
+
+        earningsBySiteInventory[key] += earnings; // sommo
       });
 
-      // Converti in array
+      // converto l'oggetto in un array di oggetti {site, inv, earnings} per poter ordinare e filtrare
       let arr = Object.entries(earningsBySiteInventory).map(([key, total]) => {
         let [site, inv] = key.split("||");
         return { site, inv, earnings: total };
       });
 
-      // Filtra per tipo inventory
+      // filtro per tipo inventory
       let videoSites = arr.filter(r => r.inv === "video");
       let displaySites = arr.filter(r => r.inv === "display");
 
-      // Ordina
-      videoSites.sort((a, b) => b.earnings - a.earnings);
+      // forma breve per ordinare per ricavi decrescenti
+	  // // se b ha più ricavi di a → risultato positivo → b va prima, altrimenti a va prima, se sono uguali (risultato = 0) rimane l'ordinamento naturale
+      videoSites.sort((a, b) => b.earnings - a.earnings); 
       displaySites.sort((a, b) => b.earnings - a.earnings);
 
-      // Prendi top 10
+      // salvo solo i primi 10 di ciascuno
       let top10Video = videoSites.slice(0, 10);
       let top10Display = displaySites.slice(0, 10);
 
-      // Funzione per riempire tabella
+      // riempio la tabella
       function fillTable(tableId, data) {
         const tbody = document.querySelector(`#${tableId} tbody`);
         data.forEach((r, i) => {
