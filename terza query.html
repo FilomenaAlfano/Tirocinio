@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Performance Ultime 4 Settimane</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 90%;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+    tr:hover {
+      background: #f1f1f1;
+    }
+    tr.positive { background: #e9f7ef; }
+    tr.negative { background: #fdecea; }
+    .small { font-size: 0.9em; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Siti con Performance Migliore<br>(Ultime 4 settimane vs Precedenti 4)</h1>
+  <p class="small">Nota: il parser normalizza gli header (tutti minuscoli). Il file CSV può usare ";" o "," come delimitatore.</p>
+  <table id="performance">
+    <thead>
+      <tr>
+        <th>Posizione</th>
+        <th>Sito</th>
+        <th>Ricavi Precedenti 4 sett.</th>
+        <th>Ricavi Ultime 4 sett.</th>
+        <th>Variazione %</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadCSV(path = "2025.csv") {
+      const resp = await fetch(path);
+      if (!resp.ok) {
+        console.error('Errore nel fetch del CSV:', resp.status, resp.statusText);
+        return [];
+      }
+      const text = await resp.text();
+      if (!text || !text.trim()) return [];
+
+      // rileva il delimitatore principale (";" preferito, altrimenti ",")
+      const delimiter = text.includes(';') ? ';' : (text.includes(',') ? ',' : ';');
+
+      const rows = text.trim().split(/\r?\n/).map(r => r.trim()).filter(r => r.length > 0);
+      if (rows.length < 1) return [];
+
+      // normalizza header in minuscolo (per robustezza)
+      const headers = rows[0].split(delimiter).map(h => h.trim().replace(/^\"|\"$/g, "").toLowerCase());
+
+      const records = rows.slice(1).map(row => {
+        const values = row.split(delimiter).map(v => v.trim().replace(/^\"|\"$/g, ""));
+        let obj = {};
+        headers.forEach((h, i) => {
+          obj[h] = values[i] !== undefined ? values[i] : "";
+        });
+        return obj;
+      });
+
+      return records;
+    }
+
+    function parseDate(str) {
+      if (!str) return null;
+      str = ("" + str).trim();
+
+      // formato DD/MM/YYYY o D/M/YYYY o con trattini
+      const dmY = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+      const m = dmY.exec(str);
+      if (m) {
+        const dd = m[1].padStart(2, '0');
+        const mm = m[2].padStart(2, '0');
+        const yyyy = m[3];
+        // costruisco ISO-local date (senza timezone) per evitare ambiguità
+        return new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
+      }
+
+      // prova a creare una Date standard (ISO, ecc.)
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function safeParseEarnings(val) {
+      if (val === null || val === undefined) return 0;
+      let s = String(val).trim();
+      if (s === '') return 0;
+      // rimuove simboli non numerici tranne - , .
+      s = s.replace(/[^0-9,\.\-]/g, '');
+      // se ci sono sia ',' che '.' assumiamo che '.' sia separatore decimale e rimuoviamo le virgole usate come thousand sep
+      if (s.indexOf('.') !== -1 && s.indexOf(',') !== -1) {
+        s = s.replace(/,/g, '');
+      }
+      // sostituisci virgola con punto per convertire decimali
+      s = s.replace(/,/g, '.');
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    async function analyzePerformance() {
+      const records = await loadCSV();
+      if (!records || records.length === 0) {
+        console.error('CSV vuoto o non trovato.');
+        return;
+      }
+
+      // usa chiavi normalizzate (tutte minuscole) per accedere ai campi
+      const validRecords = records.filter(r => parseDate(r['date']) !== null);
+      if (validRecords.length === 0) {
+        console.error('Nessuna data valida trovata nel CSV');
+        return;
+      }
+
+      // mappa delle date (ms)
+      const dates = validRecords.map(r => parseDate(r['date']).getTime()).filter(t => Number.isFinite(t));
+
+      // invece di Math.max(...dates) (che può esplodere con spread operator su array molto grande), uso reduce
+      const maxTime = dates.reduce((max, t) => (t > max ? t : max), -Infinity);
+      if (!Number.isFinite(maxTime)) {
+        console.error('Impossibile determinare la data massima');
+        return;
+      }
+      const maxDate = new Date(maxTime);
+
+      // Intervalli
+      const endRecent = new Date(maxDate);
+      const startRecent = new Date(maxDate);
+      startRecent.setDate(startRecent.getDate() - 27);
+
+      const endPrev = new Date(startRecent);
+      endPrev.setDate(endPrev.getDate() - 1);
+
+      const startPrev = new Date(endPrev);
+      startPrev.setDate(startPrev.getDate() - 27);
+
+      console.log('Ultime 4 settimane:', startRecent.toISOString().split('T')[0], '-', endRecent.toISOString().split('T')[0]);
+      console.log('Precedenti 4 settimane:', startPrev.toISOString().split('T')[0], '-', endPrev.toISOString().split('T')[0]);
+
+      // Somma ricavi per sito (Map per robustezza)
+      const earningsBySite = new Map();
+
+      for (const r of validRecords) {
+        const date = parseDate(r['date']);
+        if (!date) continue;
+        const site = r['siteid'] && r['siteid'].trim() !== '' ? r['siteid'].trim() : 'Sconosciuto';
+        const earnings = safeParseEarnings(r['earnings']);
+
+        if (!earningsBySite.has(site)) earningsBySite.set(site, { prev: 0, recent: 0 });
+        const bucket = earningsBySite.get(site);
+
+        if (date >= startRecent && date <= endRecent) {
+          bucket.recent += earnings;
+        } else if (date >= startPrev && date <= endPrev) {
+          bucket.prev += earnings;
+        }
+      }
+
+      // Calcola variazioni
+      const perf = [];
+      for (const [site, val] of earningsBySite.entries()) {
+        let variation;
+        if (val.prev > 0) {
+          variation = ((val.recent - val.prev) / val.prev) * 100;
+        } else {
+          variation = (val.recent > 0) ? 100 : 0; // comportamento scelto: se prev=0 e recent>0 => +100%
+        }
+        perf.push({ site, prev: val.prev, recent: val.recent, variation });
+      }
+
+      // Ordina per miglioramento (dalla più alta alla più bassa)
+      perf.sort((a, b) => b.variation - a.variation);
+
+      // Top 10
+      const top = perf.slice(0, 10);
+      const tbody = document.querySelector('#performance tbody');
+      tbody.innerHTML = '';
+
+      top.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.className = r.variation >= 0 ? 'positive' : 'negative';
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${r.site}</td>
+          <td>${r.prev.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+          <td>${r.recent.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+          <td style="color:${r.variation >= 0 ? 'green' : 'red'}">${r.variation.toFixed(2)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // avvia l'analisi
+    analyzePerformance();
+  </script>
+</body>
+</html>

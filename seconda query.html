@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Top 10 Siti per Ricavi - Video & Display</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #333;
+    }
+    .tables {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+    table {
+      margin: 10px;
+      border-collapse: collapse;
+      width: 45%;
+      min-width: 300px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+    tr:hover {
+      background: #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+  <h1>Top 10 Siti per Ricavi (Video & Display)</h1>
+  <div class="tables">
+    <div>
+      <h2>Video</h2>
+      <table id="top10-video">
+        <thead>
+          <tr>
+            <th>Posizione</th>
+            <th>Sito</th>
+            <th>Ricavi Totali</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div>
+      <h2>Display</h2>
+      <table id="top10-display">
+        <thead>
+          <tr>
+            <th>Posizione</th>
+            <th>Sito</th>
+            <th>Ricavi Totali</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function loadCSV() {
+      const response = await fetch("2025.csv");
+      const data = await response.text();
+
+      const rows = data.trim().split("\n");
+      const headers = rows[0].split(";").map(h => h.trim());
+
+      const records = rows.slice(1).map(row => {
+        const values = row.split(";");
+        let obj = {};
+        headers.forEach((h, i) => {
+          obj[h] = values[i] ? values[i].trim() : "";
+        });
+        return obj;
+      });
+
+      return records;
+    }
+
+    async function showTop10ByInventory() {
+      let records = await loadCSV();
+
+      // Somma i ricavi per sito + tipo inventory
+      let earningsBySiteInventory = {};
+      records.forEach(r => {
+        let site = r["siteid"];
+        let inv = r["inventory"].toLowerCase();
+        let earnings = parseFloat(r["earnings"].replace(",", ".").replace(/[^0-9.]/g, "")) || 0;
+        let key = site + "||" + inv;
+        if (!earningsBySiteInventory[key]) earningsBySiteInventory[key] = 0;
+        earningsBySiteInventory[key] += earnings;
+      });
+
+      // Converti in array
+      let arr = Object.entries(earningsBySiteInventory).map(([key, total]) => {
+        let [site, inv] = key.split("||");
+        return { site, inv, earnings: total };
+      });
+
+      // Filtra per tipo inventory
+      let videoSites = arr.filter(r => r.inv === "video");
+      let displaySites = arr.filter(r => r.inv === "display");
+
+      // Ordina
+      videoSites.sort((a, b) => b.earnings - a.earnings);
+      displaySites.sort((a, b) => b.earnings - a.earnings);
+
+      // Prendi top 10
+      let top10Video = videoSites.slice(0, 10);
+      let top10Display = displaySites.slice(0, 10);
+
+      // Funzione per riempire tabella
+      function fillTable(tableId, data) {
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        data.forEach((r, i) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${r.site}</td>
+            <td>${r.earnings.toLocaleString("it-IT", {minimumFractionDigits: 2, maximumFractionDigits: 2})} €</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      fillTable("top10-video", top10Video);
+      fillTable("top10-display", top10Display);
+    }
+
+    showTop10ByInventory();
+  </script>
+</body>
+</html>
