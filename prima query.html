@@ -50,11 +50,11 @@
   <script>
     async function loadCSV() {
       const response = await fetch("2025.csv");
-      const data = await response.text();
+      const data = await response.text(); // salvo il contenuto del file come un testo
 
-      const rows = data.trim().split("\n");
-      let headers = rows[0].split(";");
-      headers = headers.map(h => h.trim());
+      const rows = data.trim().split("\n"); // rimuovo gli spazi vuoti e divido per riga
+      let headers = rows[0].split(";"); // estraggo l'header e lo suddivido nei suoi campi
+      headers = headers.map(h => h.trim()); // rimuovo eventuali spazi vuoti dagli header 
 
       const dataRows = rows.slice(1); // prendo tutte le righe tranne la prima (che contiene gli header)
 
