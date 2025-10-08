@@ -1,0 +1,55 @@
+<?php
+// NOTE TO SELF: I COMMENTI ANDRANNO CANCELLATI PER RISPARMIARE I TOKEN
+
+//parte di connessione con l'API
+
+$responde = $client->responses()->create{[
+'model' => 'gpt-5o-nano', // partiamo dal più semplice,
+'tools' => [
+   [
+        'type' => 'function',
+		'name' => 'get_top10_last4weeks',
+		'description' => 'Get the top 10 sites that earned the most/with the best performance in the last 4 weeks, with the absolute value and the percentage value/change'
+        ],
+		'parameters' => [
+		   'type' => 'object',
+		   'properties' => [
+		   'top10sites' => [
+		   'type' => 'array',
+		   'description0 => the sites who earned the most in the last 4 weeks' 
+		  ,
+		   
+		   
+		   
+], 
+		'unit' => [
+		
+		'type' => 
+
+
+
+]
+// parte di connessione col dstabase
+
+try {
+    // connessione al database
+    $db = new PDO('sqlite:/percorso/del/database.sqlite');
+
+    // esecuzione della query
+    $rs = $db->query("INSERIRE QUERY"); 
+	// prendo tutti i risultati come array associativo
+    $output = $rs->fetchAll(PDO::FETCH_ASSOC);
+	
+    // restituisco i dati come JSON (!!!FORSE VA BENE ANCHE SOLO L'ARRAY ASSOCIATIVO quindi solo return output)
+    return json_encode($output);
+
+    // visualizzazione a schermo (debug), probabilmente da cancellare per il func calling
+    foreach($rs as $r) {
+        print "|" . $r['siteid'] . "|" . $r['delta_valore_assoluto'] . "|" . $r['delta_percentuale'] . "|" . "\n";
+    }
+
+} catch (PDOException $e) {
+    echo "<p style='color:red;'>❌ Errore: " . $e->getMessage() . "</p>";
+}
+
+?>
