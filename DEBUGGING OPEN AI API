@@ -1,0 +1,31 @@
+🧩 1. Verifica base: connessione e autenticazione
+
+Appena dopo aver creato il client:
+
+$apiKey = 'INSERISCI_LA_TUA_API_KEY';
+$client = OpenAI::client($apiKey);
+
+
+aggiungi un piccolo test come questo:
+
+try {
+    // chiamata banale, leggera, per verificare che il client funzioni
+    $test = $client->models()->list();
+
+    echo "<p style='color:green;'>✅ Connessione all'API riuscita!</p>";
+    echo "<pre>";
+    print_r($test->data[0]); // mostra un modello, tipo "gpt-5o-nano"
+    echo "</pre>";
+
+} catch (Exception $e) {
+    echo "<p style='color:red;'>❌ Errore di connessione all'API:</p>";
+    echo "<pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
+}
+
+🔍 Cosa fa:
+
+prova a elencare i modelli disponibili,
+
+se la connessione funziona → mostra “Connessione riuscita”,
+
+se la chiave è sbagliata, non c’è rete o c’è un errore → cattura e stampa il messaggio dell’eccezione.
