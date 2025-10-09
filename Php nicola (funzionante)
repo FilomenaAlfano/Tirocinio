@@ -1,0 +1,47 @@
+<?php
+// Connessione al database SQLite
+$db = new PDO('sqlite:C:/Users/gabry/Downloads/tirocinio.db');
+
+// La query
+$sql = "
+WITH l AS (
+    SELECT siteid, SUM(earnings) AS e1
+    FROM ad_revenues
+    WHERE date >= date('now','-28 days')
+    GROUP BY siteid
+),
+p AS (
+    SELECT siteid, SUM(earnings) AS e0
+    FROM ad_revenues
+    WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
+    GROUP BY siteid
+)
+SELECT l.siteid,
+       e1,
+       COALESCE(e0,0) AS e0,
+       ABS(e1 - COALESCE(e0,0)) AS abs,
+       CASE WHEN COALESCE(e0,0)=0 THEN NULL
+            ELSE ROUND((e1-e0)*100.0/e0,2)
+       END AS perc
+FROM l LEFT JOIN p USING(siteid)
+ORDER BY perc DESC;
+";
+
+// Esegui la query
+$stmt = $db->query($sql);
+$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Mostra i risultati
+echo "<table border='1' cellpadding='5'>";
+echo "<tr><th>Site ID</th><th>E1</th><th>E0</th><th>ABS</th><th>PERC</th></tr>";
+foreach ($results as $row) {
+    echo "<tr>
+            <td>{$row['siteid']}</td>
+            <td>{$row['e1']}</td>
+            <td>{$row['e0']}</td>
+            <td>{$row['abs']}</td>
+            <td>{$row['perc']}</td>
+          </tr>";
+}
+echo "</table>";
+?>
