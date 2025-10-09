@@ -2,7 +2,11 @@
 // NOTE TO SELF: I COMMENTI ANDRANNO CANCELLATI PER RISPARMIARE I TOKEN
 
 //parte di connessione con l'API
+use OpenAI\Client;
 
+
+$api_key = 'SECRET ';
+$client = OpenAI::client($apiKey);
 $responde = $client->responses()->create{[
 'model' => 'gpt-5o-nano', // partiamo dal più semplice,
 'tools' => [
@@ -28,20 +32,50 @@ $responde = $client->responses()->create{[
 
 
 
-]
-// parte di connessione col dstabase
+]);
 
+foreach($response->output as $item) {
+	if ($item->type === 'function_call') {
+		$name = $item->name ?? null;
+		$args = json_decode($item->arguments ??  '{}', true) ?: [];
+		
+		if ($name === 'get_temperature') {
+			//chiamo la funzione
+			$top10sites = get
+// parte di connessione col dstabase
+function get_top10_last4weeks() { 
 try {
     // connessione al database
     $db = new PDO('sqlite:/percorso/del/database.sqlite');
 
     // esecuzione della query
-    $rs = $db->query("INSERIRE QUERY"); 
+    $rs = $db->query("WITH l AS (
+  SELECT siteid, SUM(earnings) e1
+  FROM ad_revenues
+  WHERE date >= date('now','-28 days')
+  GROUP BY siteid
+),
+p AS (
+  SELECT siteid, SUM(earnings) e0
+  FROM ad_revenues
+  WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
+  GROUP BY siteid
+)
+SELECT l.siteid,
+       e1,
+       COALESCE(e0,0) e0,
+       ABS(e1-COALESCE(e0,0)) abs,
+       CASE WHEN COALESCE(e0,0)=0 THEN NULL
+            ELSE ROUND((e1-e0)*100.0/e0,2)
+       END perc
+FROM l LEFT JOIN p USING(siteid)
+ORDER BY perc DESC;"); 
 	// prendo tutti i risultati come array associativo
     $output = $rs->fetchAll(PDO::FETCH_ASSOC);
 	
     // restituisco i dati come JSON (!!!FORSE VA BENE ANCHE SOLO L'ARRAY ASSOCIATIVO quindi solo return output)
     return json_encode($output);
+}
 
     // visualizzazione a schermo (debug), probabilmente da cancellare per il func calling
     foreach($rs as $r) {
