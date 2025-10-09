@@ -3,11 +3,13 @@
 
 //parte di connessione con l'API
 use OpenAI\Client;
+use OpenAI as OpenAI; // forse opzionale
 
-
-$api_key = 'SECRET ';
+$api_key = 'SECRET';
 $client = OpenAI::client($apiKey);
-$responde = $client->responses()->create{[
+
+
+$response = $client->responses()->create{[
 'model' => 'gpt-5o-nano', // partiamo dal più semplice,
 'tools' => [
    [
@@ -79,7 +81,7 @@ ORDER BY perc DESC;");
 
     // visualizzazione a schermo (debug), probabilmente da cancellare per il func calling
     foreach($rs as $r) {
-        print "|" . $r['siteid'] . "|" . $r['delta_valore_assoluto'] . "|" . $r['delta_percentuale'] . "|" . "\n";
+        print "|" . $r['siteid'] . "|" . $r['e1'] . "|" . $r['e0'] . $r['e1'] . "|" . "\n";
     }
 
 } catch (PDOException $e) {
