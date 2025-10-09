@@ -2,6 +2,7 @@
 // NOTE TO SELF: I COMMENTI ANDRANNO CANCELLATI PER RISPARMIARE I TOKEN
 
 //parte di connessione con l'API
+/*
 use OpenAI\Client;
 use OpenAI as OpenAI; // forse opzionale
 
@@ -10,7 +11,7 @@ $client = OpenAI::client($apiKey);
 
 
 $response = $client->responses()->create{[
-'model' => 'gpt-5o-nano', // partiamo dal più semplice,
+'model' => 'gpt-5o-nano', // partiamo dal più semplice
 'tools' => [
    [
         'type' => 'function',
@@ -44,48 +45,56 @@ foreach($response->output as $item) {
 		if ($name === 'get_temperature') {
 			//chiamo la funzione
 			$top10sites = get
-// parte di connessione col dstabase
+			*/ 
+// Parte di connessione col database
 function get_top10_last4weeks() { 
-try {
-    // connessione al database
-    $db = new PDO('sqlite:/percorso/del/database.sqlite');
+    try {
+        // connessione al database
+        $db = new PDO('sqlite:C:/Program Files/DB Browser for SQLite/tirocinio.db');
 
-    // esecuzione della query
-    $rs = $db->query("WITH l AS (
-  SELECT siteid, SUM(earnings) e1
-  FROM ad_revenues
-  WHERE date >= date('now','-28 days')
-  GROUP BY siteid
-),
-p AS (
-  SELECT siteid, SUM(earnings) e0
-  FROM ad_revenues
-  WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
-  GROUP BY siteid
-)
-SELECT l.siteid,
-       e1,
-       COALESCE(e0,0) e0,
-       ABS(e1-COALESCE(e0,0)) abs,
-       CASE WHEN COALESCE(e0,0)=0 THEN NULL
-            ELSE ROUND((e1-e0)*100.0/e0,2)
-       END perc
-FROM l LEFT JOIN p USING(siteid)
-ORDER BY perc DESC;"); 
-	// prendo tutti i risultati come array associativo
-    $output = $rs->fetchAll(PDO::FETCH_ASSOC);
-	
-    // restituisco i dati come JSON (!!!FORSE VA BENE ANCHE SOLO L'ARRAY ASSOCIATIVO quindi solo return output)
-    return json_encode($output);
-}
+        // esecuzione della query
+        $rs = $db->query("
+            WITH l AS (
+                SELECT siteid, SUM(earnings) e1
+                FROM ad_revenues
+                WHERE date >= date('now','-28 days')
+                GROUP BY siteid
+            ),
+            p AS (
+                SELECT siteid, SUM(earnings) e0
+                FROM ad_revenues
+                WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
+                GROUP BY siteid
+            )
+            SELECT l.siteid,
+                   e1,
+                   COALESCE(e0,0) e0,
+                   ABS(e1-COALESCE(e0,0)) abs,
+                   CASE WHEN COALESCE(e0,0)=0 THEN NULL
+                        ELSE ROUND((e1-e0)*100.0/e0,2)
+                   END perc
+            FROM l LEFT JOIN p USING(siteid)
+            ORDER BY perc DESC;
+        "); 
 
-    // visualizzazione a schermo (debug), probabilmente da cancellare per il func calling
-    foreach($rs as $r) {
-        print "|" . $r['siteid'] . "|" . $r['e1'] . "|" . $r['e0'] . $r['e1'] . "|" . "\n";
+        // prendo tutti i risultati come array associativo
+        $output = $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        // debug visivo (stampa risultati)
+        foreach ($rs as $r) {
+            echo "| " . $r['siteid'] . " | " . $r['e1'] . " | " . $r['e0'] . " | " . $r['abs'] . " | " . $r['perc'] . " |<br>";
+        }
+
+        // restituisco anche i dati come JSON (può servire dopo)
+        return json_encode($output);
+
+    } catch (PDOException $e) {
+        echo "<p style='color:red;'>❌ Errore DB: " . htmlspecialchars($e->getMessage()) . "</p>";
+        return null;
     }
-
-} catch (PDOException $e) {
-    echo "<p style='color:red;'>❌ Errore: " . $e->getMessage() . "</p>";
 }
+
+// chiamata alla funzione per test
+get_top10_last4weeks();
 
 ?>
