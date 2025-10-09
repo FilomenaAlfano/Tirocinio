@@ -1,0 +1,109 @@
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+echo " PHP è partito<br>";
+
+// NOTE TO SELF: I COMMENTI ANDRANNO CANCELLATI PER RISPARMIARE I TOKEN
+
+//parte di connessione con l'API
+/*
+use OpenAI\Client;
+use OpenAI as OpenAI; // forse opzionale
+
+$api_key = '';
+$client = OpenAI::client($apiKey);
+
+
+$response = $client->responses()->create{[
+'model' => 'gpt-5o-nano', // partiamo dal più semplice
+'tools' => [
+   [
+        'type' => 'function',
+        'name' => 'get_top10_last4weeks',
+        'description' => 'Get the top 10 sites that earned the most/with the best performance in the last 4 weeks, with the absolute value and the percentage value/change'
+        ],
+        'parameters' => [
+           'type' => 'object',
+           'properties' => [
+           'top10sites' => [
+           'type' => 'array',
+           'description0 => the sites who earned the most in the last 4 weeks' 
+          ,
+
+
+
+], 
+        'unit' => [
+
+        'type' => 
+
+
+
+]);
+
+foreach($response->output as $item) {
+    if ($item->type === 'function_call') {
+        $name = $item->name ?? null;
+        $args = json_decode($item->arguments ??  '{}', true) ?: [];
+
+        if ($name === 'get_temperature') {
+            //chiamo la funzione
+            $top10sites = get
+            */ 
+            // parte di connessione al database
+function get_top10_last4weeks() { 
+    echo " Inizio funzione<br>";
+    try {
+        $db = new PDO('sqlite:C:/Users/gabry/Downloads/tirocinio.db');
+        echo " Connessione DB riuscita<br>";
+
+        $sql = "
+        WITH l AS (
+            SELECT siteid, SUM(earnings) e1
+            FROM ad_revenues
+            WHERE date >= date('now','-28 days')
+            GROUP BY siteid
+        ),
+        p AS (
+            SELECT siteid, SUM(earnings) e0
+            FROM ad_revenues
+            WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
+            GROUP BY siteid
+        )
+        SELECT l.siteid,
+               e1,
+               COALESCE(e0,0) AS e0,
+               ABS(e1 - COALESCE(e0,0)) AS abs_diff,
+               CASE 
+                   WHEN COALESCE(e0,0) = 0 THEN NULL
+                   ELSE ROUND((e1 - e0) * 100.0 / e0, 2)
+               END AS perc
+        FROM l
+        LEFT JOIN p USING(siteid)
+        ORDER BY perc DESC
+        LIMIT 10;
+        ";
+
+        $rs = $db->query($sql);
+        echo " Query di test eseguita<br>";
+
+        // Converte i risultati in array associativo
+        $output = $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        // Mostra in formato leggibile (solo per debug)
+        echo "<pre>";
+        print_r($output);
+        echo "</pre>";
+
+        // Ritorna JSON
+        return json_encode($output);
+
+    } catch (PDOException $e) {
+        echo "<p style='color:red;'>Errore DB: " . htmlspecialchars($e->getMessage()) . "</p>";
+        return null;
+    }
+}
+
+get_top10_last4weeks();
