@@ -81,9 +81,11 @@ function get_top10_last4weeks() {
         $output = $rs->fetchAll(PDO::FETCH_ASSOC);
 
         // debug visivo (stampa risultati)
-        foreach ($rs as $r) {
-            echo "| " . $r['siteid'] . " | " . $r['e1'] . " | " . $r['e0'] . " | " . $r['abs'] . " | " . $r['perc'] . " |<br>";
-        }
+        // debug visivo (stampa risultati)
+foreach ($output as $r) {
+    echo "| " . $r['siteid'] . " | " . $r['e1'] . " | " . $r['e0'] . " | " . $r['abs'] . " | " . $r['perc'] . " |<br>";
+}
+
 
         // restituisco anche i dati come JSON (può servire dopo)
         return json_encode($output);
