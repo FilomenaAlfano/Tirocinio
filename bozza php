@@ -1,4 +1,10 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+echo "🚀 PHP è partito<br>";
+flush();
 // NOTE TO SELF: I COMMENTI ANDRANNO CANCELLATI PER RISPARMIARE I TOKEN
 
 //parte di connessione con l'API
@@ -6,7 +12,7 @@
 use OpenAI\Client;
 use OpenAI as OpenAI; // forse opzionale
 
-$api_key = 'SECRET';
+$api_key = '';
 $client = OpenAI::client($apiKey);
 
 
@@ -46,48 +52,40 @@ foreach($response->output as $item) {
 			//chiamo la funzione
 			$top10sites = get
 			*/ 
-// Parte di connessione col database
+			// parte di connessione al database 
 function get_top10_last4weeks() { 
+    echo "✅ Inizio funzione<br>";
     try {
-        // connessione al database
-        $db = new PDO('sqlite:C:/Program Files/DB Browser for SQLite/tirocinio.db');
+   $db = new PDO('sqlite:C:/wamp64/www/tirocinio.db');
 
-        // esecuzione della query
-        $rs = $db->query("
-            WITH l AS (
-                SELECT siteid, SUM(earnings) e1
-                FROM ad_revenues
-                WHERE date >= date('now','-28 days')
-                GROUP BY siteid
-            ),
-            p AS (
-                SELECT siteid, SUM(earnings) e0
-                FROM ad_revenues
-                WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
-                GROUP BY siteid
-            )
-            SELECT l.siteid,
-                   e1,
-                   COALESCE(e0,0) e0,
-                   ABS(e1-COALESCE(e0,0)) abs,
-                   CASE WHEN COALESCE(e0,0)=0 THEN NULL
-                        ELSE ROUND((e1-e0)*100.0/e0,2)
-                   END perc
-            FROM l LEFT JOIN p USING(siteid)
-            ORDER BY perc DESC;
-        "); 
+        echo "✅ Connessione DB riuscita<br>";
 
-        // prendo tutti i risultati come array associativo
+        $rs = $db->query("WITH l AS (
+  SELECT siteid, SUM(earnings) e1
+  FROM ad_revenues
+  WHERE date >= date('now','-28 days')
+  GROUP BY siteid
+),
+p AS (
+  SELECT siteid, SUM(earnings) e0
+  FROM ad_revenues
+  WHERE date >= date('now','-56 days') AND date < date('now','-28 days')
+  GROUP BY siteid
+)
+SELECT l.siteid,
+       e1,
+       COALESCE(e0,0) e0,
+       ABS(e1-COALESCE(e0,0)) abs,
+       CASE WHEN COALESCE(e0,0)=0 THEN NULL
+            ELSE ROUND((e1-e0)*100.0/e0,2)
+       END perc
+FROM l LEFT JOIN p USING(siteid)
+ORDER BY perc DESC;");
+        echo "✅ Query di test eseguita<br>";
+
         $output = $rs->fetchAll(PDO::FETCH_ASSOC);
+        print_r($output);
 
-        // debug visivo (stampa risultati)
-        // debug visivo (stampa risultati)
-foreach ($output as $r) {
-    echo "| " . $r['siteid'] . " | " . $r['e1'] . " | " . $r['e0'] . " | " . $r['abs'] . " | " . $r['perc'] . " |<br>";
-}
-
-
-        // restituisco anche i dati come JSON (può servire dopo)
         return json_encode($output);
 
     } catch (PDOException $e) {
@@ -95,8 +93,7 @@ foreach ($output as $r) {
         return null;
     }
 }
-
-// chiamata alla funzione per test
 get_top10_last4weeks();
+
 
 ?>
