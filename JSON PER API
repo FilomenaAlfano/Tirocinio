@@ -1,0 +1,53 @@
+$response = $client->responses()->create([
+    'model' => 'gpt-5o-nano',
+    'input' => "Get the top 10 sites that earned the most in the last 4 weeks, with performance variations.",
+    'tools' => [
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'get_top10_last4weeks',
+                'description' => 'Retrieve the top 10 sites that performed best in the last 4 weeks, with earnings and percentage changes.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'top10sites' => [
+                            'type' => 'array',
+                            'description' => 'List of top 10 sites with earnings and performance details.',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'siteid' => [
+                                        'type' => 'string',
+                                        'description' => 'Unique identifier of the website.'
+                                    ],
+                                    'e1' => [
+                                        'type' => 'number',
+                                        'description' => 'Total earnings in the last 4 weeks.',
+                                        'unit' => 'EUR'
+                                    ],
+                                    'e0' => [
+                                        'type' => 'number',
+                                        'description' => 'Total earnings in the previous 4 weeks.',
+                                        'unit' => 'EUR'
+                                    ],
+                                    'abs_diff' => [
+                                        'type' => 'number',
+                                        'description' => 'Absolute change in earnings between the two periods.',
+                                        'unit' => 'EUR'
+                                    ],
+                                    'perc' => [
+                                        'type' => 'number',
+                                        'description' => 'Percentage change compared to the previous 4 weeks.',
+                                        'unit' => '%'
+                                    ]
+                                ],
+                                'required' => ['siteid', 'e1', 'abs_diff', 'perc']
+                            ]
+                        ]
+                    ],
+                    'required' => ['top10sites']
+                ]
+            ]
+        ]
+    ]
+]);
