@@ -1,0 +1,128 @@
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+use OpenAI as OpenAI;
+
+$apiKey = 'INSERISCI_LA_TUA_API_KEY';
+$client = OpenAI::client($apiKey);
+
+/**
+ * 1️⃣ Funzione PHP "locale" che analizza il CSV
+ *    - legge il file
+ *    - calcola guadagni ultime 4 settimane e precedenti 4
+ *    - restituisce top 10 siti con delta %
+ */
+function get_top10_last4weeks($csvPath)
+{
+    $rows = array_map(fn($line) => str_getcsv($line, ';'), file($csvPath));
+    $header = ['date','siteid','inventory','requests','impressions','clicks','earnings'];
+    $data = [];
+
+    $now = new DateTime('today');
+    $interval = new DateInterval('P4W');
+
+    $cutoff1 = (clone $now)->sub($interval); // -4 settimane
+    $cutoff2 = (clone $cutoff1)->sub($interval); // -8 settimane
+
+    for ($i = 1; $i < count($rows); $i++) {
+        $cols = $rows[$i];
+        if (count($cols) < 7) continue;
+
+        [$dateStr, $siteid, , , , , $earnings] = $cols;
+        $date = DateTime::createFromFormat('Y-m-d', trim($dateStr));
+        if (!$date) continue;
+
+        $earnings = floatval(str_replace(',', '.', $earnings));
+
+        $period = null;
+        if ($date >= $cutoff1) {
+            $period = 'last4';
+        } elseif ($date >= $cutoff2 && $date < $cutoff1) {
+            $period = 'prev4';
+        }
+
+        if ($period) {
+            if (!isset($data[$siteid])) {
+                $data[$siteid] = ['last4' => 0, 'prev4' => 0];
+            }
+            $data[$siteid][$period] += $earnings;
+        }
+    }
+
+    $results = [];
+    foreach ($data as $siteid => $periods) {
+        $e1 = $periods['last4'];
+        $e0 = $periods['prev4'];
+        $abs_diff = abs($e1 - $e0);
+        $perc = ($e0 > 0) ? round(($e1 - $e0) * 100 / $e0, 2) : null;
+
+        $results[] = [
+            'siteid' => $siteid,
+            'e1' => round($e1, 2),
+            'e0' => round($e0, 2),
+            'abs_diff' => $abs_diff,
+            'perc' => $perc
+        ];
+    }
+
+    usort($results, fn($a, $b) => ($b['perc'] ?? -INF) <=> ($a['perc'] ?? -INF));
+    return array_slice($results, 0, 10);
+}
+
+/**
+ * 2️⃣ Definizione dello schema del function calling
+ */
+$csvPath = __DIR__ . '/2025.csv';
+
+$response = $client->responses()->create([
+    'model' => 'gpt-5o-nano',
+    'temperature' => 0,
+    'input' => "Analizza i dati nel CSV e restituisci i top 10 siti con guadagni nelle ultime 4 settimane e delta percentuale rispetto alle 4 settimane precedenti.",
+    'tools' => [
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'get_top10_last4weeks',
+                'description' => 'Retrieve the top 10 sites that performed best in the last 4 weeks, with earnings and percentage changes.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'csvPath' => [
+                            'type' => 'string',
+                            'description' => 'Path to the CSV file with earnings data.'
+                        ]
+                    ],
+                    'required' => ['csvPath']
+                ]
+            ]
+        ]
+    ]
+]);
+
+/**
+ * 3️⃣ Intercetto la function call e la eseguo in PHP
+ */
+foreach ($response->output as $item) {
+    if ($item->type === 'function_call') {
+        $functionName = $item->name;
+        $args = json_decode($item->arguments ?? '{}', true);
+
+        echo "🧩 Function call rilevata: {$functionName}\n";
+        echo "📦 Argomenti: " . json_encode($args, JSON_PRETTY_PRINT) . "\n\n";
+
+        if ($functionName === 'get_top10_last4weeks') {
+            $results = get_top10_last4weeks($args['csvPath']);
+            echo "✅ RISULTATO:\n";
+            print_r($results);
+
+            // opzionale: chiedi a GPT di spiegare i risultati
+            $followup = $client->responses()->create([
+                'model' => 'gpt-5o-mini',
+                'input' => "Ecco i dati: " . json_encode($results) . ". Spiega sinteticamente chi ha avuto la miglior performance.",
+            ]);
+
+            echo "\n💬 Risposta GPT:\n";
+            echo $followup->output_text;
+        }
+    }
+}
