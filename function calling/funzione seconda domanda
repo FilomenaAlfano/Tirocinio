@@ -1,0 +1,90 @@
+<?php
+// Imposta il fuso orario
+date_default_timezone_set('Europe/Rome');
+
+// Percorso del file CSV
+$file = 'C:/Users/gallu/Downloads/ricavi.csv';
+
+// Controlla che esista
+if (!file_exists($file)) {
+    die("File non trovato!");
+}
+
+$data = [];
+
+if (($handle = fopen($file, "r")) !== false) {
+    $header = fgetcsv($handle); // Legge intestazione
+
+    while (($row = fgetcsv($handle)) !== false) {
+        $record = array_combine($header, $row);
+
+        $siteid = $record['siteid'];
+        $inventory = strtoupper(trim($record['inventory']));
+        $earnings = (float)$record['earnings'];
+
+        if (!isset($data[$siteid])) {
+            $data[$siteid] = [
+                'totale' => 0,
+                'VIDEO' => 0,
+                'DISPLAY' => 0
+            ];
+        }
+
+        // Somma per tipo di inventory
+        $data[$siteid]['totale'] += $earnings;
+        if ($inventory === 'VIDEO') {
+            $data[$siteid]['VIDEO'] += $earnings;
+        } elseif ($inventory === 'DISPLAY') {
+            $data[$siteid]['DISPLAY'] += $earnings;
+        }
+    }
+
+    fclose($handle);
+}
+
+// Funzione per estrarre top 10
+function top10($data, $key) {
+    $arr = [];
+    foreach ($data as $siteid => $values) {
+        $arr[] = [
+            'siteid' => $siteid,
+            'earnings' => $values[$key]
+        ];
+    }
+    usort($arr, function ($a, $b) {
+        return $b['earnings'] <=> $a['earnings'];
+    });
+    return array_slice($arr, 0, 10);
+}
+
+// Calcola le top 10
+$topTotale = top10($data, 'totale');
+$topVideo = top10($data, 'VIDEO');
+$topDisplay = top10($data, 'DISPLAY');
+
+// Funzione di stampa tabella
+function stampaTabella($titolo, $array) {
+    echo "<h2>$titolo</h2>";
+    echo "<table border='1' cellpadding='6' cellspacing='0'>";
+    echo "<tr style='background-color:#f0f0f0;'>
+            <th>Posizione</th>
+            <th>Site ID</th>
+            <th>Ricavi (€)</th>
+          </tr>";
+    $pos = 1;
+    foreach ($array as $row) {
+        echo "<tr>";
+        echo "<td>{$pos}</td>";
+        echo "<td>{$row['siteid']}</td>";
+        echo "<td>" . number_format($row['earnings'], 2, ',', '.') . "</td>";
+        echo "</tr>";
+        $pos++;
+    }
+    echo "</table><br>";
+}
+
+// Mostra risultati
+stampaTabella("TOP 10 - Ricavi Totali (Tutti gli inventory)", $topTotale);
+stampaTabella("TOP 10 - Ricavi SOLO VIDEO", $topVideo);
+stampaTabella("TOP 10 - Ricavi SOLO DISPLAY", $topDisplay);
+?>
