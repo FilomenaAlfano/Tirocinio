@@ -22,7 +22,7 @@ function get_top10_last4weeks($csvPath)
         $cols = $rows[$i];
         if (count($cols) < 7) continue;
 
-        [$dateStr, $siteid, , , , , $earnings] = $cols;
+        [$dateStr, $siteid, $inventory, $requests , $impressions, $clicks, $earnings] = $cols;
         $date = DateTime::createFromFormat('Y-m-d', trim($dateStr));
         if (!$date) continue;
 
