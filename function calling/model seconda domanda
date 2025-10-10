@@ -1,0 +1,24 @@
+$response = $client->responses()->create([
+    'model' => 'gpt-5o-nano',
+    'temperature' => 0,
+    'input' => "Analyze the dataset in the provided CSV file and retrieve the 10 sites that earned the most globally, with video and display",
+    'tools' => [
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'get_top10_vd',
+                'description' => 'Retrieves the top 10 sites with the highest global earnings, by video and display inventory types, based on data from a CSV file',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'csvPath' => [
+                            'type' => 'string',
+                            'description' => 'Path to the CSV file with earnings data.'
+                        ]
+                    ],
+                    'required' => ['csvPath']
+                ]
+            ]
+        ]
+    ]
+]);
