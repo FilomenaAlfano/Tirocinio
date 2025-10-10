@@ -1,50 +1,60 @@
-function get_top10($csvPath)
-{
-    $rows = array_map(fn($line) => str_getcsv($line, ';'), file($csvPath));
-    $header = ['date','siteid','inventory','requests','impressions','clicks','earnings'];
-    $data = [];
+<?php
+// Imposta il fuso orario
+date_default_timezone_set('Europe/Rome');
 
+// Percorso del file CSV
+$file = 'C:/Users/gallu/Downloads/ricavi.csv';
 
-    for ($i = 1; $i < count($rows); $i++) {
-        $cols = $rows[$i];
-        if (count($cols) < 7) continue;
-
-        [$dateStr, $siteid, $inventory, $requests , $impressions, $clicks, $earnings] = $cols;
-        
-
-        $earnings = floatval(str_replace(',', '.', $earnings));
-
-        $period = null;
-        if ($date >= $cutoff1) {
-            $period = 'last4';
-        } elseif ($date >= $cutoff2 && $date < $cutoff1) {
-            $period = 'prev4';
-        }
-
-        if ($period) {
-            if (!isset($data[$siteid])) {
-                $data[$siteid] = ['last4' => 0, 'prev4' => 0];
-            }
-            $data[$siteid][$period] += $earnings;
-        }
-    }
-
-    $results = [];
-    foreach ($data as $siteid => $periods) {
-        $e1 = $periods['last4'];
-        $e0 = $periods['prev4'];
-        $abs_diff = abs($e1 - $e0);
-        $perc = ($e0 > 0) ? round(($e1 - $e0) * 100 / $e0, 2) : null;
-
-        $results[] = [
-            'siteid' => $siteid,
-            'e1' => round($e1, 2),
-            'e0' => round($e0, 2),
-            'abs_diff' => $abs_diff,
-            'perc' => $perc
-        ];
-    }
-
-    usort($results, fn($a, $b) => ($b['perc'] ?? -INF) <=> ($a['perc'] ?? -INF));
-    return array_slice($results, 0, 10);
+// Controlla se il file esiste
+if (!file_exists($file)) {
+    die("File non trovato!");
 }
+
+$data = [];
+if (($handle = fopen($file, "r")) !== false) {
+    $header = fgetcsv($handle); // Legge l'intestazione
+
+    while (($row = fgetcsv($handle)) !== false) {
+        $record = array_combine($header, $row);
+
+        // Parsing dei dati
+        $siteid = $record['siteid'];
+        $earnings = (float)$record['earnings'];
+
+        if (!isset($data[$siteid])) {
+            $data[$siteid] = 0;
+        }
+
+        $data[$siteid] += $earnings;
+    }
+
+    fclose($handle);
+}
+
+// Ordina i siti per ricavi totali decrescenti
+arsort($data);
+
+// Prendi i top 10
+$top10 = array_slice($data, 0, 10, true);
+
+// Stampa tabella HTML
+echo "<h2>Top 10 siti per ricavi totali (dal dataset completo)</h2>";
+echo "<table border='1' cellpadding='6' cellspacing='0'>";
+echo "<tr style='background-color:#f0f0f0;'>
+        <th>Posizione</th>
+        <th>Site ID</th>
+        <th>Ricavi Totali (€)</th>
+      </tr>";
+
+$posizione = 1;
+foreach ($top10 as $siteid => $ricavi) {
+    echo "<tr>";
+    echo "<td>{$posizione}</td>";
+    echo "<td>{$siteid}</td>";
+    echo "<td><strong>" . number_format($ricavi, 2, ',', '.') . "</strong></td>";
+    echo "</tr>";
+    $posizione++;
+}
+
+echo "</table>";
+?>
